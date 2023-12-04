@@ -3,9 +3,8 @@ package com.cleanupmaster.phonecleaner.activity;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -17,27 +16,34 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.airbnb.lottie.Lottie;
 import com.cleanupmaster.phonecleaner.R;
 import com.cleanupmaster.phonecleaner.helper.BatteryManagerBroadcastReceiver;
 import com.cleanupmaster.phonecleaner.utils.BatteryUtils;
 import com.github.lzyzsd.circleprogress.DonutProgress;
 import com.google.android.material.button.MaterialButton;
 
-public class BatterySaverActivity extends AppCompatActivity implements
-        BatteryManagerBroadcastReceiver.BatteryUpdateListener {
+import java.util.Locale;
+
+public class BatterySaverActivity extends AppCompatActivity {
     private LinearLayout music_linearLayout, game_linearLayout, video_linearLayout, tiktok_linearLayout;
     private MaterialButton battery_optimize_button;
     private ImageView back_arrow;
     private DonutProgress battery_charging_progressBar;
-    private TextView battery_current, battery_power, battery_temperature;
+    private TextView battery_current, battery_power, battery_temperature, charge_complete_remaining;
     private BatteryManagerBroadcastReceiver batteryReceiver;
     private Handler handler;
-
+    private BatteryUtils batteryUtils;
+    private BatteryManager batteryManager;
+    private Lottie battery_charging_anim, charging_anim;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_battery_saver);
+        batteryUtils = new BatteryUtils(this);
+        handler = new Handler();
+
         music_linearLayout = findViewById(R.id.music_linearLayout);
         game_linearLayout = findViewById(R.id.game_linearLayout);
         video_linearLayout = findViewById(R.id.video_linearLayout);
@@ -48,7 +54,11 @@ public class BatterySaverActivity extends AppCompatActivity implements
         battery_current  = findViewById(R.id.battery_current);
         battery_power = findViewById(R.id.battery_power);
         battery_temperature = findViewById(R.id.battery_temperature);
+        charge_complete_remaining = findViewById(R.id.charge_complete_remaining);
+        batteryManager = (BatteryManager) getSystemService(Context.BATTERY_SERVICE); // Initialize batteryManager
 
+        //battery_charging_anim = findViewById(R.id.battery_charging_anim);
+       // charging_anim = findViewById(R.id.charging_anim);
 
         Animation animation = AnimationUtils.loadAnimation(this, R.anim.slide_from_right);
         animation.setDuration(400);
@@ -72,22 +82,9 @@ public class BatterySaverActivity extends AppCompatActivity implements
             }
         });
 
-        // Initialize BatteryReceiver
-        batteryReceiver = new BatteryManagerBroadcastReceiver(this);
-        // Initialize handler
-        handler = new Handler();
         // Schedule periodic updates every 5 seconds
         handler.postDelayed(updateRunnable, 1000);
-
-        // Update battery information
-        updateBatteryInformation();
-
-        // Start listening for battery updates
-        registerBatteryReceiver();
-
-
     }
-
     private Runnable updateRunnable = new Runnable() {
         @Override
         public void run() {
@@ -99,87 +96,101 @@ public class BatterySaverActivity extends AppCompatActivity implements
     };
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        registerBatteryReceiver();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // Stop listening for battery updates
-        unregisterBatteryReceiver();
+    protected void onDestroy() {
+        super.onDestroy();
         // Stop the periodic updates
         handler.removeCallbacks(updateRunnable);
     }
+    private void updateBatteryInformation() {
+        BatteryUtils.BatteryInfo batteryInfo = batteryUtils.getBatteryInfo();
 
-    private void registerBatteryReceiver() {
-        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        registerReceiver(batteryReceiver, filter);
-    }
-
-    private void unregisterBatteryReceiver() {
-        unregisterReceiver(batteryReceiver);
-    }
+        // Battery percentage
+        String batteryPercentage = String.valueOf((batteryInfo.level * 100) / batteryInfo.scale);
 
 
-    @Override
-    public void onBatteryUpdate(Intent intent) {
-        if (intent != null) {
-            // Log the values to check in real-time
-            BatteryUtils batteryUtils = new BatteryUtils(this);
+        // Battery power
+        double power = batteryInfo.voltage * batteryInfo.current / 1000.0; // Convert to watts
+        // Convert to kilowatts if the power is large
+        String formattedPower;
+        if (power >= 1000) {
+            formattedPower = String.format(Locale.US, "%.2f kW", power / 1000.0);
+        } else {
+            formattedPower = String.format(Locale.US, "%.2f W", power);
+        }
 
-            int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-            int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            int voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
+        // Battery current
+        double current = batteryInfo.current / 1000.0; // Convert to amperes
+        String formattedCurrent = String.format(Locale.US, "%.2f A", current);
 
-            // Log the values to check in real-time
-            Log.d("BatteryUpdate", "Battery Level: " + level + "/" + scale);
-            Log.d("BatteryUpdate", "Battery Voltage: " + voltage);
-            Log.d("BatteryUpdate", "Battery Current: " + batteryUtils.getBatteryCurrent());
-            Log.d("BatteryUpdate", "Battery Temperature: " + intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1));
+        // Battery temperature
+        double tempInCelsius = batteryInfo.temperature / 10.0; // Convert to degrees Celsius
 
-            // Update your UI or perform any other actions based on the real-time battery information
-            // For example, you can update TextViews, progress bars, etc.
-
-            // Battery percentage
-            String batteryPercentage = String.valueOf((level * 100) / scale);
+        runOnUiThread(() -> {
+            battery_current.setText(formattedCurrent);
+            battery_power.setText(formattedPower);
+            battery_temperature.setText(String.valueOf(tempInCelsius));
             battery_charging_progressBar.setDonut_progress(batteryPercentage);
             battery_charging_progressBar.setText(batteryPercentage);
+            charge_complete_remaining.setText(calculateChargeTimeRemaining(batteryInfo));
 
-            // Battery power
-            String batteryPower = String.valueOf(batteryUtils.getBatteryPower());
-            battery_power.setText(batteryPower);
+            // Show/hide Lottie animations based on charging status
+            boolean isCharging = batteryInfo.status == BatteryManager.BATTERY_STATUS_CHARGING || batteryInfo.status == BatteryManager.BATTERY_STATUS_FULL;
 
-            // Battery current
-            String batteryCurrent = String.valueOf(batteryUtils.getBatteryCurrent());
-            battery_current.setText(batteryCurrent);
+            int visibility = isCharging ? View.VISIBLE : View.INVISIBLE;
 
-            // Battery temperature
-            String batteryTemperature = String.valueOf(batteryUtils.getBatteryTemperature());
-            battery_temperature.setText(batteryTemperature);
+
+            findViewById(R.id.battery_charging_anim).setVisibility(visibility);
+            findViewById(R.id.charging_anim).setVisibility(visibility);
+        });
+
+    }
+    private String calculateChargeTimeRemaining(BatteryUtils.BatteryInfo batteryInfo) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            // Check if the device is charging
+            if (batteryInfo.status == BatteryManager.BATTERY_STATUS_CHARGING || batteryInfo.status == BatteryManager.BATTERY_STATUS_FULL) {
+                // Use the default method for devices with API level 29 or higher
+                long chargeTimeRemaining = batteryManager.computeChargeTimeRemaining();
+
+                // Handle the case when the chargeTimeRemaining is not available
+                if (chargeTimeRemaining >= 0) {
+                    // Calculate hours and minutes
+                    long hours = chargeTimeRemaining / 3600;
+                    long minutes = (chargeTimeRemaining % 3600) / 60;
+
+                    return String.format(Locale.US, "Charging, need %d h %d min", hours, minutes);
+                } else {
+                    return "Unable to estimate remaining charging time.";
+                }
+            } else {
+                return "Not charging or full.";
+            }
+        } else {
+            // For devices with API level lower than 29, calculate charge time based on charging current
+            double chargingCurrent = Math.abs(batteryInfo.current / 1000.0); // Convert to amperes
+
+            if (chargingCurrent > 0) {
+                int remainingCapacity = batteryInfo.scale - batteryInfo.level;
+
+                // Ensure remainingCapacity is non-negative
+                remainingCapacity = Math.max(remainingCapacity, 0);
+
+                long secondsRemaining = (long) (remainingCapacity * 3600L / chargingCurrent);
+
+                // Log additional information
+
+                if (secondsRemaining >= 0) {
+                    // Calculate hours and minutes
+                    long hours = secondsRemaining / 3600;
+                    long minutes = (secondsRemaining % 3600) / 60;
+
+                    return String.format(Locale.US, "Charging, need %d h %d min", hours, minutes);
+                } else {
+                    return "Unable to estimate remaining charging time.";
+                }
+            } else {
+                return "Unable to estimate remaining charging time. Current is 0.";
+            }
         }
     }
 
-
-
-    private void updateBatteryInformation() {
-        BatteryUtils batteryUtils = new BatteryUtils(this);
-        // Battery percentage
-        String batteryPercentage = String.valueOf(batteryUtils.getBatteryPercentage());
-        battery_charging_progressBar.setDonut_progress(batteryPercentage);
-        battery_charging_progressBar.setText(batteryPercentage);
-
-        // Battery power
-        String batteryPower = String.valueOf(batteryUtils.getBatteryPower());
-        battery_power.setText(batteryPower);
-
-        // Battery Current
-        String batteryCurrent = String.valueOf(batteryUtils.getBatteryCurrent());
-        battery_current.setText(batteryCurrent);
-
-        // Battery Temperature
-        String batteryTemperature = String.valueOf(batteryUtils.getBatteryTemperature());
-        battery_current.setText(batteryTemperature);
-    }
 }

@@ -57,21 +57,25 @@
                 android:layout_height="match_parent">
 
                 <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/battery_charging_anim"
                     android:layout_width="80dp"
                     android:layout_height="80dp"
                     android:layout_centerInParent="true"
                     app:lottie_autoPlay="true"
                     app:lottie_fileName="battery_charging_anim.json"
-                    app:lottie_loop="true" />
+                    app:lottie_loop="true"
+                    android:visibility="invisible"/>
 
                 <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/charging_anim"
                     android:layout_width="270dp"
                     android:layout_height="270dp"
                     android:layout_margin="12dp"
                     android:layout_centerHorizontal="true"
                     app:lottie_autoPlay="true"
                     app:lottie_fileName="charging_anim.json"
-                    app:lottie_loop="true" />
+                    app:lottie_loop="true"
+                    android:visibility="invisible"/>
 
                 <com.github.lzyzsd.circleprogress.DonutProgress
                     android:id="@+id/battery_charging_progressBar"
@@ -139,10 +143,9 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Current (mA)"
+                                android:text="Current"
                                 android:textColor="@color/grayishWhite"
                                 android:textStyle="bold"/>
-
 
                         </LinearLayout>
 
@@ -177,7 +180,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Power (W)"
+                                android:text="Power"
                                 android:textColor="@color/grayishWhite"
                                 android:textStyle="bold"/>
 
