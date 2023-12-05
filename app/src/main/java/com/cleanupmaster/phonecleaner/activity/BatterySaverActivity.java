@@ -103,11 +103,8 @@ public class BatterySaverActivity extends AppCompatActivity {
     }
     private void updateBatteryInformation() {
         BatteryUtils.BatteryInfo batteryInfo = batteryUtils.getBatteryInfo();
-
         // Battery percentage
         String batteryPercentage = String.valueOf((batteryInfo.level * 100) / batteryInfo.scale);
-
-
         // Battery power
         double power = batteryInfo.voltage * batteryInfo.current / 1000.0; // Convert to watts
         // Convert to kilowatts if the power is large
@@ -117,7 +114,6 @@ public class BatterySaverActivity extends AppCompatActivity {
         } else {
             formattedPower = String.format(Locale.US, "%.2f W", power);
         }
-
         // Battery current
         double current = batteryInfo.current / 1000.0; // Convert to amperes
         String formattedCurrent = String.format(Locale.US, "%.2f A", current);
@@ -134,11 +130,9 @@ public class BatterySaverActivity extends AppCompatActivity {
             charge_complete_remaining.setText(calculateChargeTimeRemaining(batteryInfo));
 
             // Show/hide Lottie animations based on charging status
-            boolean isCharging = batteryInfo.status == BatteryManager.BATTERY_STATUS_CHARGING || batteryInfo.status == BatteryManager.BATTERY_STATUS_FULL;
-
+            boolean isCharging = batteryInfo.status == BatteryManager.BATTERY_STATUS_CHARGING
+                    || batteryInfo.status == BatteryManager.BATTERY_STATUS_FULL;
             int visibility = isCharging ? View.VISIBLE : View.INVISIBLE;
-
-
             findViewById(R.id.battery_charging_anim).setVisibility(visibility);
             findViewById(R.id.charging_anim).setVisibility(visibility);
         });

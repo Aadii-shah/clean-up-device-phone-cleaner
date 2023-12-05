@@ -19,7 +19,7 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private ArcProgress storage_progressBar;
-    private ImageView battery_saver_ImageView;
+    private ImageView battery_saver_ImageView, cpu_cooler_ImageView;
     private int percentageOccupied;
 
 
@@ -52,9 +52,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private final UpdateHandler updateHandler = new UpdateHandler(this);
-
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,6 +62,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, BatterySaverActivity.class);
+                startActivity(intent);
+            }
+        });
+        cpu_cooler_ImageView = findViewById(R.id.cpu_cooler_ImageView);
+        cpu_cooler_ImageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, CPUActivity.class);
                 startActivity(intent);
             }
         });
